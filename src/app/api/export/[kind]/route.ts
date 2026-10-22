@@ -1,26 +1,15 @@
-import * as XLSX from "xlsx";
-import { asc, desc } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { can, currentUser } from "@/lib/server/auth";
 import { caseFilters, type CaseSearch } from "@/lib/server/case-query";
 import { ALL_FIELDS } from "@/lib/forms";
 import { toValues } from "@/lib/case-record";
+import { buildXlsx, safeFileName, xlsxResponse } from "@/lib/server/xlsx";
+import { getSheet, getSheetCases } from "@/lib/server/sheets";
+import { sheetRow } from "@/lib/nomination";
 import { PRIORITY_LABELS, STATUS_LABELS } from "@/lib/constants";
 
-const xlsx = (rows: Record<string, unknown>[], name: string) => {
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws["!views"] = [{ RTL: true }];
-  const wb = XLSX.utils.book_new();
-  wb.Workbook = { Views: [{ RTL: true }] };
-  XLSX.utils.book_append_sheet(wb, ws, "البيانات");
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-  return new Response(buf, {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(name)}.xlsx`,
-    },
-  });
-};
+const xlsx = (rows: Record<string, unknown>[], name: string) => xlsxResponse(buildXlsx(rows), name);
 
 const flatFields = ALL_FIELDS.filter((f) => f.type !== "members");
 
@@ -54,6 +43,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
       "التاريخ": b.benefitDate ?? "", "المحافظة": b.governorate ?? "", "القرية": b.village ?? "", "العدد": b.quantity,
       "مربوطة بملف حالة": b.caseId ? "نعم" : "لا",
     })), `المساعدات-${date}`);
+  }
+  if (kind === "sheet") {
+    if (!can(user, "nominate")) return new Response("forbidden", { status: 403 });
+    const id = new URL(req.url).searchParams.get("id") ?? "";
+    const found = /^[0-9a-f-]{36}$/.test(id) ? await getSheet(id) : null;
+    if (!found) return new Response("not found", { status: 404 });
+    const rows = await getSheetCases(id);
+    return xlsxResponse(buildXlsx(rows.map((r, i) => sheetRow(r.c, i, r.nomination.note)), "كشف الترشيح"), safeFileName(`${found.project.name} - ${found.sheet.title}`));
+  }
+  if (kind === "sheet-email") {
+    if (!can(user, "nominate")) return new Response("forbidden", { status: 403 });
+    const id = new URL(req.url).searchParams.get("id") ?? "";
+    const [e] = /^[0-9a-f-]{36}$/.test(id) ? await db.select().from(schema.sheetEmails).where(eq(schema.sheetEmails.id, id)) : [];
+    if (!e) return new Response("not found", { status: 404 });
+    return xlsxResponse(buildXlsx(e.snapshot, "كشف الترشيح"), safeFileName(`${e.subject} - ${e.sentAt.toISOString().slice(0, 10)}`));
   }
   return new Response("not found", { status: 404 });
 }

@@ -7,6 +7,7 @@ const NAV: (NavItem & { perm: PermissionKey })[] = [
   { href: "/", label: "لوحة التحكم", icon: "dashboard", perm: "dashboard" },
   { href: "/cases/new", label: "تسجيل حالة جديدة", icon: "plus", perm: "cases.edit" },
   { href: "/cases", label: "سجل الحالات", icon: "list", perm: "cases.view" },
+  { href: "/nominations", label: "الترشيحات والكشوف", icon: "send", perm: "nominate" },
   { href: "/benefits", label: "المساعدات المنفذة", icon: "box", perm: "benefits" },
   { href: "/import", label: "استيراد وتصدير", icon: "upload", perm: "import" },
   { href: "/settings", label: "الإعدادات", icon: "gear", perm: "settings" },

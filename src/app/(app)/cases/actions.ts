@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, ne, or } from "drizzle-orm";
+import { and, eq, isNull, ne, or } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/server/auth";
@@ -77,7 +77,8 @@ export async function toggleNomination(caseId: string, projectId: string, on: bo
   if (on) {
     await db.insert(schema.nominations).values({ caseId, projectId, createdBy: user.id }).onConflictDoNothing();
   } else {
-    await db.delete(schema.nominations).where(and(eq(schema.nominations.caseId, caseId), eq(schema.nominations.projectId, projectId)));
+    // بيلغي الترشيح اللي مستني كشف بس. اللي جوه كشف بيتشال من صفحة الكشف.
+    await db.delete(schema.nominations).where(and(eq(schema.nominations.caseId, caseId), eq(schema.nominations.projectId, projectId), isNull(schema.nominations.sheetId)));
   }
   await logAudit(user, "case", caseId, on ? "nominate" : "unnominate", { projectId: { from: null, to: projectId } });
   revalidatePath(`/cases/${caseId}`);

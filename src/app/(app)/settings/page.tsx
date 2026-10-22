@@ -6,7 +6,9 @@ import { PageHeader } from "@/components/page-header";
 import { DEFAULT_LOOKUPS } from "@/lib/constants";
 import { requireUser } from "@/lib/server/auth";
 import { getLookups, getProjects, getSetting } from "@/lib/server/data";
-import { EmailSettings, LookupEditor, NewUserForm, ProjectEditor, UserRow } from "./editors";
+import { getEmailTemplate } from "@/lib/server/sheets";
+import { smtpConfigured } from "@/lib/server/mail";
+import { EmailSettings, EmailTemplateEditor, LookupEditor, NewUserForm, ProjectEditor, UserRow } from "./editors";
 
 const TABS = { users: "المستخدمين والصلاحيات", projects: "المشروعات والمعايير والأسئلة", lookups: "القوائم", email: "الإيميل وقائمة التوزيع" };
 
@@ -68,5 +70,16 @@ async function Email() {
     getSetting("nominationEmail", "abdallh.mohamed@ghaithfoundation.org"),
     getSetting<{ name: string; email: string }[]>("distributionList", []),
   ]);
-  return <div className="card"><EmailSettings email={email} list={list} /></div>;
+  const template = await getEmailTemplate();
+  return (
+    <div className="space-y-4">
+      <div className="card"><EmailSettings email={email} list={list} /></div>
+      <div className="card"><EmailTemplateEditor template={template} /></div>
+      <div className="card text-sm text-ink-soft space-y-1">
+        <div className="section-title">الإرسال المباشر من السستم</div>
+        <p>{smtpConfigured() ? "مفعّل: الإيميلات بتتبعت من السستم ومعاها ملف الكشف." : "مش مفعّل: الإيميل بيتفتح جاهز في Outlook وانت بتبعته وتأكد الإرسال."}</p>
+        <p>لتفعيله مع Microsoft 365 محتاجين نضيف في Vercel: SMTP_HOST=smtp.office365.com و SMTP_PORT=587 و SMTP_USER و SMTP_PASS لصندوق الإيميل، ويكون SMTP AUTH مفعّل عليه من الـ IT.</p>
+      </div>
+    </div>
+  );
 }

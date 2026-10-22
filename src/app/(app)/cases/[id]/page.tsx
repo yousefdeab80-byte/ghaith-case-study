@@ -33,7 +33,9 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
     : eq(schema.benefits.caseId, c.id);
   const [projects, noms, benefits, audit] = await Promise.all([
     getProjects(true),
-    db.select().from(schema.nominations).where(eq(schema.nominations.caseId, c.id)),
+    db.select({ projectId: schema.nominations.projectId, sheetId: schema.nominations.sheetId, sheetTitle: schema.sheets.title, sheetStatus: schema.sheets.status })
+      .from(schema.nominations).leftJoin(schema.sheets, eq(schema.sheets.id, schema.nominations.sheetId))
+      .where(eq(schema.nominations.caseId, c.id)),
     db.select().from(schema.benefits).where(benefitWhere).orderBy(desc(schema.benefits.benefitDate)),
     db.select().from(schema.auditLog).where(and(eq(schema.auditLog.entity, "case"), eq(schema.auditLog.entityId, c.id))).orderBy(desc(schema.auditLog.at)).limit(30),
   ]);
@@ -41,7 +43,8 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
   const values = toValues(c);
   const comp = completeness(values);
   const prio = computePriority(values);
-  const nominated = new Set(noms.map((n) => n.projectId));
+  const nominated = new Set(noms.filter((n) => !n.sheetId).map((n) => n.projectId));
+  const sheetsOf = (pid: string) => noms.filter((n) => n.sheetId && n.projectId === pid);
   const lastBenefit = (name: string) => benefits.find((b) => b.projectName === name)?.benefitDate ?? null;
   const headInfo = c.headNid ? parseNid(c.headNid) : null;
   const canNominate = can(user, "nominate");
@@ -110,7 +113,12 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
                   <span className="font-bold text-sm">{p.name}</span>
                   <span className="flex items-center gap-2">
                     <span className={`badge ${cls}`}>{label}</span>
-                    {canNominate && <NominateToggle caseId={c.id} projectId={p.id} on={nominated.has(p.id)} />}
+                    {sheetsOf(p.id).map((n) => (
+                      <Link key={n.sheetId} href={`/nominations/${n.sheetId}`} className="badge bg-primary-tint text-primary" title="مفتوح في كشف ترشيح">
+                        في كشف: {n.sheetTitle}{n.sheetStatus !== "draft" ? " (اتبعت)" : ""}
+                      </Link>
+                    ))}
+                    {canNominate && !sheetsOf(p.id).some((n) => n.sheetStatus !== "closed") && <NominateToggle caseId={c.id} projectId={p.id} on={nominated.has(p.id)} />}
                   </span>
                 </summary>
                 <ul className="mt-2 space-y-1 text-xs">
