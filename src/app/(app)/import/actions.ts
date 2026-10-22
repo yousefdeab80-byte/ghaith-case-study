@@ -9,6 +9,7 @@ import { normalizeValues, toCaseRow, toValues, type CaseValues } from "@/lib/cas
 import { mergeMissing, parseDate, resolveProjectName, type RowIssue } from "@/lib/import";
 import { DEFAULT_PROJECTS } from "@/lib/constants";
 import { normalizeDigits, normalizePhone } from "@/lib/nid";
+import { ensureCases, personKey } from "@/lib/server/case-sync";
 
 /** أي أرقام قومية من دول متسجلة بالفعل. */
 export async function existingNids(nids: string[]): Promise<string[]> {
@@ -68,19 +69,15 @@ export async function importCasesChunk(batchId: string, formType: string, chunk:
   return { created, merged };
 }
 
-/** يسجل دفعة من سجل المساعدات المنفذة ويربطها بالحالات بالرقم القومي. */
+/**
+ * يسجل دفعة من سجل المساعدات المنفذة. كل مستفيد لازم يبقى له ملف في سجل الحالات:
+ * لو موجود (بالرقم القومي أو الاسم + التليفون) بيتربط بيه، ولو مش موجود بيتفتح له ملف جديد.
+ */
 export async function importBenefitsChunk(batchId: string, chunk: { row: number; values: Record<string, unknown> }[]) {
-  await requireUser("import");
+  const user = await requireUser("import");
   const projects = await db.select().from(schema.projects);
   const known = projects.map((p) => ({ name: p.name, aliases: DEFAULT_PROJECTS.find((d) => d.name === p.name)?.aliases }));
   const projectId = new Map(projects.map((p) => [p.name, p.id]));
-  const nids = chunk.map((c) => normalizeDigits(c.values.nid)).filter((n) => n.length === 14);
-  const cases = nids.length
-    ? await db.select({ id: schema.cases.id, h: schema.cases.headNid, w: schema.cases.wifeNid }).from(schema.cases)
-      .where(or(inArray(schema.cases.headNid, nids), inArray(schema.cases.wifeNid, nids)))
-    : [];
-  const caseByNid = new Map<string, string>();
-  for (const c of cases) { if (c.h) caseByNid.set(c.h, c.id); if (c.w) caseByNid.set(c.w, c.id); }
 
   const issues: RowIssue[] = [];
   const rows = [];
@@ -99,10 +96,12 @@ export async function importBenefitsChunk(batchId: string, chunk: { row: number;
       projectName: resolved, projectId: projectId.get(resolved) ?? null,
       convoy: values.convoy ? String(values.convoy) : null, governorate: values.governorate ? String(values.governorate) : null,
       village: values.village ? String(values.village) : null, benefitDate: parseDate(values.benefitDate) ?? null,
-      quantity: Number.isFinite(qty) && qty > 0 ? qty : 1, caseId: nid ? caseByNid.get(nid) ?? null : null,
+      quantity: Number.isFinite(qty) && qty > 0 ? qty : 1, caseId: null as string | null,
       source: "import", importBatchId: batchId,
     });
   }
+  const caseIds = await ensureCases(rows, { userId: user.id, source: "benefits", importBatchId: batchId });
+  for (const r of rows) r.caseId = caseIds.get(personKey(r)) ?? null;
   if (rows.length) await db.insert(schema.benefits).values(rows);
   await bump(batchId, { created: rows.length, skipped, issues });
   return { created: rows.length, linked: rows.filter((r) => r.caseId).length, skipped, issues };

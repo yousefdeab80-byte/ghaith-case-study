@@ -14,11 +14,11 @@ export function Sidebar({ items, user, role, logout }: { items: NavItem[]; user:
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   return (
     <>
-      <button className="lg:hidden fixed top-3 right-3 z-40 btn btn-sm bg-primary text-white border-primary" onClick={() => setOpen(!open)} aria-label="القائمة">
+      <button className="print:hidden lg:hidden fixed top-3 right-3 z-40 btn btn-sm bg-primary text-white border-primary" onClick={() => setOpen(!open)} aria-label="القائمة">
         <Icon name="menu" />
       </button>
       <aside className={clsx(
-        "fixed lg:sticky top-0 right-0 z-30 h-screen w-60 shrink-0 bg-primary-dark text-[#EFEAD9] flex flex-col p-4 transition-transform",
+        "print:hidden fixed lg:sticky top-0 right-0 z-30 h-screen w-60 shrink-0 bg-primary-dark text-[#EFEAD9] flex flex-col p-4 transition-transform",
         open ? "translate-x-0" : "translate-x-full lg:translate-x-0",
       )}>
         <div className="flex items-center gap-2.5 px-2 pb-4 mb-3 border-b border-white/10">

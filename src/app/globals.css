@@ -34,3 +34,10 @@
   .stat .label-sm { @apply text-xs text-ink-soft; }
   .stat .value { @apply text-2xl font-extrabold text-primary mt-1; }
 }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { @apply bg-white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .card { @apply shadow-none; }
+  .report h2 { break-after: avoid; }
+}

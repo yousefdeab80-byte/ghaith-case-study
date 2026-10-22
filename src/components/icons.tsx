@@ -18,6 +18,7 @@ const paths: Record<string, React.ReactNode> = {
   star: <path d="M12 3.5l2.6 5.5 6 .7-4.4 4.1 1.2 6-5.4-3-5.4 3 1.2-6-4.4-4.1 6-.7L12 3.5Z" {...P} />,
   send: <path d="M4 12 20 4l-6 16-3-6-7-2Z" {...P} />,
   trash: <path d="M4 7h16M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m1 0-1 13a2 2 0 0 1-2 2H10a2 2 0 0 1-2-2L7 7" {...P} />,
+  chart: <><path d="M4 20h16" {...P} /><rect x="5.5" y="11" width="3" height="7" rx="1" {...P} /><rect x="10.5" y="6" width="3" height="12" rx="1" {...P} /><rect x="15.5" y="9" width="3" height="9" rx="1" {...P} /></>,
   info: <><circle cx="12" cy="12" r="9" {...P} /><path d="M12 11v5.5M12 8v.01" {...P} /></>,
 };
 

@@ -1,11 +1,12 @@
 "use server";
 
-import { eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db, schema } from "@/db";
 import { requireUser } from "@/lib/server/auth";
 import { logAudit } from "@/lib/server/audit";
 import { normalizeDigits, normalizePhone } from "@/lib/nid";
+import { ensureCases, linkOrphanBenefits, personKey } from "@/lib/server/case-sync";
 
 export async function addBenefit(_: string | null, form: FormData): Promise<string | null> {
   const user = await requireUser("benefits");
@@ -15,15 +16,29 @@ export async function addBenefit(_: string | null, form: FormData): Promise<stri
   const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, projectId));
   if (!project) return "المشروع غير موجود";
   const nid = normalizeDigits(form.get("nid")) || null;
-  const [hit] = nid ? await db.select({ id: schema.cases.id }).from(schema.cases).where(or(eq(schema.cases.headNid, nid), eq(schema.cases.wifeNid, nid))) : [];
+  const phone = normalizePhone(form.get("phone")) || null;
+  // أي مستفيد بيتسجل لازم يبقى له ملف في سجل الحالات
+  const person = { name, nid, phone };
+  const caseId = (await ensureCases([person], { userId: user.id, source: "benefits" })).get(personKey(person)) ?? null;
   const [row] = await db.insert(schema.benefits).values({
-    name, nid, phone: normalizePhone(form.get("phone")) || null, projectId, projectName: project.name,
+    name, nid, phone, projectId, projectName: project.name,
     convoy: String(form.get("convoy") ?? "") || null, benefitDate: String(form.get("benefitDate") ?? "") || null,
-    quantity: Math.max(1, Number(form.get("quantity")) || 1), caseId: hit?.id ?? null, source: "manual",
+    quantity: Math.max(1, Number(form.get("quantity")) || 1), caseId, source: "manual",
   }).returning({ id: schema.benefits.id });
   await logAudit(user, "benefit", row.id, "create");
   revalidatePath("/benefits");
+  revalidatePath("/cases");
   return null;
+}
+
+/** يربط المساعدات القديمة اللي ملهاش ملف بسجل الحالات، على دفعات. */
+export async function linkOldBenefits(): Promise<{ linked: number; remaining: number }> {
+  const user = await requireUser("import");
+  const res = await linkOrphanBenefits(user.id);
+  if (res.linked) await logAudit(user, "benefit", null, "link_cases", { count: { from: null, to: res.linked } });
+  revalidatePath("/benefits");
+  revalidatePath("/cases");
+  return res;
 }
 
 export async function deleteBenefit(id: string) {

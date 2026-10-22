@@ -5,6 +5,7 @@ import { logout } from "@/app/login/actions";
 
 const NAV: (NavItem & { perm: PermissionKey })[] = [
   { href: "/", label: "لوحة التحكم", icon: "dashboard", perm: "dashboard" },
+  { href: "/reports", label: "التقارير", icon: "chart", perm: "dashboard" },
   { href: "/cases/new", label: "تسجيل حالة جديدة", icon: "plus", perm: "cases.edit" },
   { href: "/cases", label: "سجل الحالات", icon: "list", perm: "cases.view" },
   { href: "/nominations", label: "الترشيحات والكشوف", icon: "send", perm: "nominate" },
@@ -19,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen">
       <Sidebar items={items} user={user.name} role={ROLE_LABELS[user.role] ?? user.role} logout={logout} />
-      <main className="flex-1 min-w-0 p-4 pt-16 lg:p-7">{children}</main>
+      <main className="flex-1 min-w-0 p-4 pt-16 lg:p-7 print:p-0">{children}</main>
     </div>
   );
 }

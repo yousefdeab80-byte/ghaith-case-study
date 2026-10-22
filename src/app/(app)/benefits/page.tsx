@@ -4,15 +4,16 @@ import { db, schema } from "@/db";
 import { PageHeader } from "@/components/page-header";
 import { Icon } from "@/components/icons";
 import { normalizeDigits } from "@/lib/nid";
-import { requireUser } from "@/lib/server/auth";
+import { can, requireUser } from "@/lib/server/auth";
 import { getProjects } from "@/lib/server/data";
 import { AddBenefitForm } from "./add-form";
+import { LinkBenefitsButton } from "./link-button";
 
-type SP = { q?: string; project?: string; unlinked?: string; page?: string };
+type SP = { q?: string; project?: string; unlinked?: string; page?: string; linked?: string };
 const PAGE = 50;
 
 export default async function BenefitsPage({ searchParams }: { searchParams: Promise<SP> }) {
-  await requireUser("benefits");
+  const user = await requireUser("benefits");
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page) || 1);
   const b = schema.benefits;
@@ -24,19 +25,22 @@ export default async function BenefitsPage({ searchParams }: { searchParams: Pro
   if (sp.project) where.push(eq(b.projectName, sp.project));
   if (sp.unlinked === "1") where.push(isNull(b.caseId));
   const w = where.length ? and(...where) : undefined;
-  const [rows, [{ total }], byProject, projects] = await Promise.all([
+  const [rows, [{ total }], byProject, projects, unlinked] = await Promise.all([
     db.select().from(b).where(w).orderBy(desc(b.benefitDate), desc(b.createdAt)).limit(PAGE).offset((page - 1) * PAGE),
     db.select({ total: count() }).from(b).where(w),
     db.select({ name: b.projectName, n: sql<number>`sum(${b.quantity})::int` }).from(b).groupBy(b.projectName).orderBy(desc(sql`2`)),
     getProjects(),
+    db.$count(b, isNull(b.caseId)),
   ]);
   const pages = Math.max(1, Math.ceil(total / PAGE));
-  const href = (p: number) => `/benefits?${new URLSearchParams({ ...sp, page: String(p) } as Record<string, string>)}`;
+  const href = (p: number) => `/benefits?${new URLSearchParams({ ...sp, linked: "", page: String(p) } as Record<string, string>)}`;
 
   return (
     <>
       <PageHeader title="المساعدات المنفذة" sub="سجل كل مساعدة اتسلمت لأسرة، القديم والجديد. بيستخدم في شرط عدم الاستفادة القريبة وفي التقارير."
         actions={<a className="btn" href="/api/export/benefits"><Icon name="download" />تصدير إكسل</a>} />
+      {sp.linked && <div className="card mb-4 border-good/40 bg-good-tint text-sm font-semibold text-good">تم: اتربط {Number(sp.linked).toLocaleString("ar-EG")} مساعدة بسجل الحالات، واللي ملهمش ملف اتفتح لهم ملف جديد.</div>}
+      {unlinked > 0 && can(user, "import") && <LinkBenefitsButton unlinked={unlinked} />}
       <div className="card mb-4"><div className="section-title mb-3">تسجيل مساعدة يدوياً</div><AddBenefitForm projects={projects} /></div>
       {byProject.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
