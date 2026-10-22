@@ -1,4 +1,6 @@
 import postgres from "postgres";
+import { count, sql as dsql } from "drizzle-orm";
+import { db, schema } from "@/db";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +28,17 @@ export async function GET() {
   await step("users", () => sql`select count(*)::int as n from users`.then((r) => r[0].n));
   await step("userById", () => sql`select id from users where id = ${"00000000-0000-0000-0000-000000000000"}`.then((r) => r.length));
   await sql.end({ timeout: 2 }).catch(() => {});
+  // نفس الكلاينت ونفس الاستعلامات اللي السستم بيستخدمها
+  await step("appUsers", () => db.select({ id: schema.users.id }).from(schema.users).limit(1).then((r) => r.length));
+  await step("appParallel", () => Promise.all([
+    db.select({ n: count() }).from(schema.cases),
+    db.select({ n: count() }).from(schema.benefits),
+    db.select({ n: count() }).from(schema.projects),
+    db.select({ n: count() }).from(schema.settings),
+    db.select({ n: count() }).from(schema.nominations),
+    db.select({ n: count() }).from(schema.sheets),
+    db.select({ k: dsql<string>`extract(year from ${schema.benefits.benefitDate})::text` }).from(schema.benefits).groupBy(dsql`1`),
+    db.select({ n: count() }).from(schema.auditLog),
+  ]).then((r) => r.map((x) => x.length)));
   return Response.json(out);
 }
