@@ -28,6 +28,10 @@ export async function GET() {
   await step("users", () => sql`select count(*)::int as n from users`.then((r) => r[0].n));
   await step("userById", () => sql`select id from users where id = ${"00000000-0000-0000-0000-000000000000"}`.then((r) => r.length));
   await sql.end({ timeout: 2 }).catch(() => {});
+  // نفس الاستعلامات مع بعض على كلاينت جديد من غير pipelining، عشان نفرّق بين مشكلة الاتصال ومشكلة الكلاينت
+  const par = postgres(raw, { prepare: false, max: 3, connect_timeout: 10, idle_timeout: 5, ...({ max_pipeline: 1 } as object) });
+  await step("rawParallel", () => Promise.all([1, 2, 3, 4, 5, 6].map((i) => par`select ${i}::int as i, count(*)::int as n from users`)).then((r) => r.length));
+  await par.end({ timeout: 2 }).catch(() => {});
   // نفس الكلاينت ونفس الاستعلامات اللي السستم بيستخدمها
   await step("appUsers", () => db.select({ id: schema.users.id }).from(schema.users).limit(1).then((r) => r.length));
   await step("appParallel", () => Promise.all([
