@@ -6,17 +6,18 @@ const url = process.env.DATABASE_URL ?? "postgres://postgres@localhost:5432/ghai
 
 /**
  * كلاينت واحد بس لكل نسخة شغالة من السيرفر، حتى لو الكود اتجمّع في أكتر من chunk.
- * بنستخدم الـ transaction pooler بتاع Supabase (بورت 6543)، وده ليه شرطين:
+ * بنستخدم الـ transaction pooler بتاع Supabase (بورت 6543):
  * - prepare: false لأنه مبيدعمش prepared statements.
- * - max_pipeline: 1 لأن الاستعلامات المتبعتة ورا بعض على نفس الاتصال (pipelining)
- *   بتعلّق عليه، فكل اتصال بيبعت استعلام واحد ويستنى نتيجته.
+ * - اتصال واحد واستعلام واحد في المرة (max: 1 و max_pipeline: 1): فتح أكتر من اتصال
+ *   من نفس الكلاينت كان بيعلّق الاستعلامات المتوازية عليه، والاستعلامات عندنا سريعة
+ *   فتنفيذها ورا بعض مش بيأثر.
  */
 const globalForDb = globalThis as unknown as { pg?: ReturnType<typeof postgres> };
 const client = (globalForDb.pg ??= postgres(url, {
   prepare: false,
   // موجودة في postgres.js بس مش في الـ types بتاعته
   ...({ max_pipeline: 1 } as object),
-  max: 3,
+  max: 1,
   idle_timeout: 10,
   max_lifetime: 60 * 5,
   connect_timeout: 15,
