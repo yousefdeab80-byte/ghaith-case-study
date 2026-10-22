@@ -108,17 +108,64 @@ export const cases = pgTable("cases", {
   index("cases_file_no_idx").on(t.fileNo),
 ]);
 
-/** ترشيح حالة لمشروع. */
+/** كشف ترشيح: مجموعة حالات مرشحة لتنفيذ واحد (قافلة / دفعة) من مشروع. بيتقفل بعد إرساله للإدارات. */
+export const sheets = pgTable("nomination_sheets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  convoy: text("convoy"),
+  governorate: text("governorate"),
+  plannedDate: date("planned_date"),
+  targetCount: integer("target_count"),
+  /** draft | sent | closed */
+  status: text("status").notNull().default("draft"),
+  notes: text("notes"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  sentBy: uuid("sent_by"),
+  createdBy: uuid("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("sheets_project_idx").on(t.projectId, t.status)]);
+
+/**
+ * ترشيح حالة لمشروع. من غير sheetId = مرشحة من ملفها ومستنية تتحط في كشف،
+ * وبـ sheetId = جوه كشف.
+ */
 export const nominations = pgTable("nominations", {
   id: uuid("id").primaryKey().defaultRandom(),
   caseId: uuid("case_id").notNull().references(() => cases.id, { onDelete: "cascade" }),
   projectId: uuid("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  sheetId: uuid("sheet_id").references(() => sheets.id, { onDelete: "cascade" }),
   /** nominated | sent | executed | dropped */
   status: text("status").notNull().default("nominated"),
   note: text("note"),
   createdBy: uuid("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [uniqueIndex("nominations_case_project_uq").on(t.caseId, t.projectId)]);
+}, (t) => [
+  uniqueIndex("nominations_pool_uq").on(t.caseId, t.projectId).where(sql`${t.sheetId} is null`),
+  uniqueIndex("nominations_sheet_uq").on(t.caseId, t.sheetId).where(sql`${t.sheetId} is not null`),
+  index("nominations_sheet_idx").on(t.sheetId),
+]);
+
+export type SheetSnapshotRow = Record<string, string | number>;
+
+/** سجل الإيميلات الرسمية اللي اتبعتت بالكشوف، ومعاها نسخة ثابتة من الكشف وقت الإرسال. */
+export const sheetEmails = pgTable("sheet_emails", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  sheetId: uuid("sheet_id").notNull().references(() => sheets.id, { onDelete: "cascade" }),
+  fromEmail: text("from_email").notNull(),
+  to: jsonb("to").$type<string[]>().notNull().default([]),
+  cc: jsonb("cc").$type<string[]>().notNull().default([]),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  /** smtp = اتبعت من السستم، manual = اتبعت من Outlook واتأكد يدوياً */
+  method: text("method").notNull(),
+  rowCount: integer("row_count").notNull().default(0),
+  snapshot: jsonb("snapshot").$type<SheetSnapshotRow[]>().notNull().default([]),
+  sentBy: uuid("sent_by"),
+  sentByName: text("sent_by_name"),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("sheet_emails_sheet_idx").on(t.sheetId)]);
 
 /** سجل الاستفادات (المساعدات المنفذة)، القديمة والجديدة. */
 export const benefits = pgTable("benefits", {
@@ -169,3 +216,6 @@ export type Project = typeof projects.$inferSelect;
 export type Case = typeof cases.$inferSelect;
 export type NewCase = typeof cases.$inferInsert;
 export type Benefit = typeof benefits.$inferSelect;
+export type Sheet = typeof sheets.$inferSelect;
+export type Nomination = typeof nominations.$inferSelect;
+export type SheetEmail = typeof sheetEmails.$inferSelect;

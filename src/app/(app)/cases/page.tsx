@@ -4,6 +4,7 @@ import { db, schema } from "@/db";
 import { PageHeader } from "@/components/page-header";
 import { CompletenessBar, PriorityBadge, StatusBadge } from "@/components/badges";
 import { Icon } from "@/components/icons";
+import { FilterSelect } from "@/components/filter-select";
 import { PRIORITY_LABELS, STATUS_LABELS } from "@/lib/constants";
 import { requireUser } from "@/lib/server/auth";
 import { getLookups, getProjects } from "@/lib/server/data";
@@ -45,10 +46,10 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
           <label className="label">بحث</label>
           <input name="q" defaultValue={sp.q} className="input" placeholder="الاسم، الرقم القومي، التليفون، القرية، رقم الملف" />
         </div>
-        <Select name="status" label="حالة الملف" value={sp.status} options={Object.entries(STATUS_LABELS)} />
-        <Select name="gov" label="المحافظة" value={sp.gov} options={lookups.governorates.map((g) => [g, g])} />
-        <Select name="priority" label="الأولوية" value={sp.priority} options={Object.entries(PRIORITY_LABELS)} />
-        <Select name="project" label="مرشحة لمشروع" value={sp.project} options={projects.map((p) => [p.id, p.name])} />
+        <FilterSelect name="status" label="حالة الملف" value={sp.status} options={Object.entries(STATUS_LABELS)} />
+        <FilterSelect name="gov" label="المحافظة" value={sp.gov} options={lookups.governorates.map((g) => [g, g])} />
+        <FilterSelect name="priority" label="الأولوية" value={sp.priority} options={Object.entries(PRIORITY_LABELS)} />
+        <FilterSelect name="project" label="مرشحة لمشروع" value={sp.project} options={projects.map((p) => [p.id, p.name])} />
         <div className="flex gap-2 items-center">
           <label className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft whitespace-nowrap">
             <input type="checkbox" name="incomplete" value="1" defaultChecked={sp.incomplete === "1"} />بيانات ناقصة
@@ -95,17 +96,5 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
         )}
       </div>
     </>
-  );
-}
-
-function Select({ name, label, value, options }: { name: string; label: string; value?: string; options: [string, string][] }) {
-  return (
-    <div>
-      <label className="label">{label}</label>
-      <select name={name} defaultValue={value ?? ""} className="input">
-        <option value="">الكل</option>
-        {options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-      </select>
-    </div>
   );
 }

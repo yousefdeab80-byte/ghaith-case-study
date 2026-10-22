@@ -99,3 +99,11 @@ export async function saveEmailSettings(nominationEmail: string, list: { name: s
   await logAudit(admin, "settings", "email", "update");
   done("email");
 }
+
+export async function saveEmailTemplate(subject: string, body: string) {
+  const admin = await requireUser("settings");
+  if (!subject.trim() || !body.trim()) throw new Error("الموضوع والنص مطلوبين");
+  await setSetting("nominationTemplate", { subject: subject.trim(), body });
+  await logAudit(admin, "settings", "email_template", "update");
+  done("email");
+}

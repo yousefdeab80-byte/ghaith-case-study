@@ -4,8 +4,9 @@ import { useActionState, useState, useTransition } from "react";
 import clsx from "clsx";
 import type { FeedbackQuestion, Project, User } from "@/db/schema";
 import { PERMISSIONS, ROLE_LABELS, DEFAULT_PERMISSIONS } from "@/lib/constants";
-import { createUser, resetPassword, saveEmailSettings, saveLookup, saveProject, updateUser, type ProjectInput } from "./actions";
+import { createUser, resetPassword, saveEmailSettings, saveEmailTemplate, saveLookup, saveProject, updateUser, type ProjectInput } from "./actions";
 import { Icon } from "@/components/icons";
+import { DEFAULT_EMAIL_TEMPLATE, TEMPLATE_VARS, type EmailTemplate } from "@/lib/nomination";
 
 const useRun = () => {
   const [pending, start] = useTransition();
@@ -199,6 +200,28 @@ export function EmailSettings({ email, list }: { email: string; list: { name: st
       <div className="flex gap-2 items-center">
         <button className="btn btn-sm" onClick={() => setRows([...rows, { name: "", email: "" }])}>إضافة</button>
         <button className="btn btn-sm btn-primary" disabled={pending} onClick={() => run(() => saveEmailSettings(from, rows))}>حفظ</button>{note}
+      </div>
+    </div>
+  );
+}
+
+export function EmailTemplateEditor({ template }: { template: EmailTemplate }) {
+  const [subject, setSubject] = useState(template.subject);
+  const [body, setBody] = useState(template.body);
+  const { pending, run, note } = useRun();
+  return (
+    <div className="space-y-3">
+      <div className="section-title">قالب إيميل الترشيحات</div>
+      <p className="text-xs text-ink-soft">
+        الكلمات اللي بين {"{ }"} بتتملي لوحدها من بيانات الكشف: {TEMPLATE_VARS.map((v) => `{${v}}`).join("  ")}.
+        والنص بيفضل قابل للتعديل قبل كل إرسال.
+      </p>
+      <div><label className="label">الموضوع</label><input className="input" value={subject} onChange={(e) => setSubject(e.target.value)} /></div>
+      <div><label className="label">النص</label><textarea className="input min-h-[280px] leading-7" value={body} onChange={(e) => setBody(e.target.value)} /></div>
+      <div className="flex gap-2 items-center">
+        <button className="btn btn-sm btn-primary" disabled={pending} onClick={() => run(() => saveEmailTemplate(subject, body))}>حفظ القالب</button>
+        <button className="btn btn-sm" onClick={() => { setSubject(DEFAULT_EMAIL_TEMPLATE.subject); setBody(DEFAULT_EMAIL_TEMPLATE.body); }}>رجّع القالب الأصلي</button>
+        {note}
       </div>
     </div>
   );
