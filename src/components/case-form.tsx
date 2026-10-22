@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import type { Field, Section } from "@/lib/forms";
-import { completeness, isVisible } from "@/lib/forms";
+import { completeness, computeSum, isVisible } from "@/lib/forms";
 import { parseNid } from "@/lib/nid";
 import type { FamilyMember } from "@/db/schema";
 import { createCase, findByNid, updateCase } from "@/app/(app)/cases/actions";
@@ -42,10 +42,11 @@ export function CaseForm({
   const renderSection = (s: Section) => (
     <div key={s.id} className="card">
       <div className="section-title">{s.title}</div>
+      {s.optional && <p className="section-sub">الحقول دي مش في الاستمارة الورقية، املاها لو المعلومة متاحة أو سيبها فاضية.</p>}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-3">
         {s.fields.filter((f) => isVisible(f, values)).map((f) => (
           <FieldInput key={f.key} field={f} value={values[f.key]} lookups={lookups} onChange={(v) => set(f.key, v)}
-            onNidBlur={(nid) => checkDup(f.key, nid)} warning={dupWarn[f.key]} />
+            onNidBlur={(nid) => checkDup(f.key, nid)} warning={dupWarn[f.key]} suggested={computeSum(f, values)} />
         ))}
       </div>
     </div>
@@ -110,12 +111,12 @@ function optionsFor(field: Field, lookups: Record<string, string[]>, current: un
   return [...base, ...extra];
 }
 
-function FieldInput({ field, value, lookups, onChange, onNidBlur, warning }: {
+function FieldInput({ field, value, lookups, onChange, onNidBlur, warning, suggested }: {
   field: Field; value: unknown; lookups: Record<string, string[]>; onChange: (v: unknown) => void;
-  onNidBlur: (nid: string) => void; warning?: string;
+  onNidBlur: (nid: string) => void; warning?: string; suggested?: number | null;
 }) {
   const str = value === undefined || value === null ? "" : String(value);
-  const wide = field.type === "members" || field.type === "textarea" || field.type === "multi";
+  const wide = field.wide || field.type === "members" || field.type === "textarea" || field.type === "multi";
   const label = <label className="label">{field.label}{field.required && <span className="text-danger"> *</span>}</label>;
 
   let control: React.ReactNode;
@@ -181,7 +182,16 @@ function FieldInput({ field, value, lookups, onChange, onNidBlur, warning }: {
       control = <input className="input tabular-nums" inputMode="tel" dir="ltr" value={str} onChange={(e) => onChange(e.target.value)} />;
       break;
     case "number":
-      control = <input className="input tabular-nums" inputMode="decimal" value={str} onChange={(e) => onChange(e.target.value)} />;
+      control = (
+        <>
+          <input className="input tabular-nums" inputMode="decimal" value={str} onChange={(e) => onChange(e.target.value)} />
+          {suggested !== null && suggested !== undefined && String(suggested) !== str && (
+            <button type="button" className="text-[11px] text-primary font-semibold mt-1 hover:underline" onClick={() => onChange(String(suggested))}>
+              مجموع البنود: {suggested.toLocaleString("ar-EG")} جنيه، استخدمه
+            </button>
+          )}
+        </>
+      );
       break;
     case "date":
       control = <input className="input" type="date" value={str} onChange={(e) => onChange(e.target.value)} />;
@@ -198,9 +208,11 @@ function FieldInput({ field, value, lookups, onChange, onNidBlur, warning }: {
 }
 
 const RELATIONS = ["زوجة", "زوج", "ابن", "ابنة", "أب", "أم", "أخرى"];
-const MEMBER_COLS: { key: keyof FamilyMember; label: string; w?: string }[] = [
-  { key: "name", label: "الاسم" }, { key: "relation", label: "صلة القرابة", w: "w-28" }, { key: "age", label: "السن", w: "w-16" },
-  { key: "eduStage", label: "التعليم / المرحلة", w: "w-32" }, { key: "job", label: "العمل", w: "w-28" }, { key: "health", label: "الصحة", w: "w-28" },
+/** نفس أعمدة جدول "أفراد الأسرة" في الاستمارة الورقية. */
+const MEMBER_COLS: { key: keyof FamilyMember; label: string; w?: string; options?: string[] }[] = [
+  { key: "name", label: "الاسم" }, { key: "relation", label: "الصلة", w: "w-28", options: RELATIONS }, { key: "age", label: "السن", w: "w-16" },
+  { key: "gender", label: "النوع", w: "w-24", options: ["ذكر", "أنثى"] }, { key: "eduStage", label: "المرحلة التعليمية", w: "w-36" },
+  { key: "hasBag", label: "توجد شنطة", w: "w-24", options: ["نعم", "لا"] },
 ];
 
 function MembersEditor({ value, onChange }: { value: FamilyMember[]; onChange: (v: FamilyMember[]) => void }) {
@@ -214,9 +226,9 @@ function MembersEditor({ value, onChange }: { value: FamilyMember[]; onChange: (
             <tr key={i}>
               {MEMBER_COLS.map((c) => (
                 <td key={c.key} className={c.w}>
-                  {c.key === "relation"
-                    ? <select className="input py-1" value={m.relation ?? ""} onChange={(e) => update(i, "relation", e.target.value)}>
-                        <option value="">—</option>{RELATIONS.map((r) => <option key={r}>{r}</option>)}
+                  {c.options
+                    ? <select className="input py-1" value={m[c.key] ?? ""} onChange={(e) => update(i, c.key, e.target.value)}>
+                        <option value="">—</option>{[...c.options, ...(m[c.key] && !c.options.includes(m[c.key]!) ? [m[c.key]!] : [])].map((r) => <option key={r}>{r}</option>)}
                       </select>
                     : <input className="input py-1" value={m[c.key] ?? ""} onChange={(e) => update(i, c.key, e.target.value)} />}
                 </td>

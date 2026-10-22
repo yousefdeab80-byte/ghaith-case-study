@@ -23,7 +23,7 @@
   .badge-mid { @apply bg-accent-tint text-accent; }
   .badge-low { @apply bg-good-tint text-good; }
   .badge-study { @apply bg-water-tint text-water; }
-  .badge-eligible { @apply bg-accent-tint text-[#8a5a1c]; }
+  .badge-eligible { @apply bg-brand-soft text-primary; }
   .badge-served { @apply bg-good-tint text-good; }
   .badge-excluded { @apply bg-surface-alt text-ink-soft; }
   .table { @apply w-full text-sm; }

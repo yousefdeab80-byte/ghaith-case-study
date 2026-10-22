@@ -4,9 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "غيث | نظام إدارة قطاع دراسة الحالة",
   description: "إدارة حالات قطاع دراسة الحالة بمؤسسة غيث للتنمية المجتمعية",
-  icons: { icon: "/logo.svg" },
+  icons: { icon: "/icon.png", apple: "/icon.png" },
 };
-export const viewport: Viewport = { themeColor: "#1F4738" };
+export const viewport: Viewport = { themeColor: "#0B3226" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

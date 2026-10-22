@@ -39,7 +39,7 @@ export default async function AchievementsPage({ searchParams }: { searchParams:
             <div className="text-sm opacity-80">إنجازات مؤسسة غيث منذ 2023</div>
             <div className="grid gap-6 sm:grid-cols-3 mt-3">
               <div><div className="text-4xl font-extrabold tabular-nums">{n(cum.aid)}</div><div className="text-sm opacity-80 mt-1">مساعدة اتسلمت للأسر</div></div>
-              <div><div className="text-4xl font-extrabold tabular-nums text-accent-tint">{n(cum.beneficiaries)}</div><div className="text-sm opacity-80 mt-1">مستفيد</div></div>
+              <div><div className="text-4xl font-extrabold tabular-nums text-brand">{n(cum.beneficiaries)}</div><div className="text-sm opacity-80 mt-1">مستفيد</div></div>
               <div><div className="text-4xl font-extrabold tabular-nums">{n(cum.governorates.length)}</div><div className="text-sm opacity-80 mt-1">محافظة وصلتها المساعدات · {n(cum.projects.length)} مشروع ومبادرة</div></div>
             </div>
             <p className="text-[11px] opacity-70 mt-4">أرقام 2023–2026 من سجلات المؤسسة، وبعدها من المسجل في السستم.</p>
