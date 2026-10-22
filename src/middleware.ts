@@ -9,4 +9,4 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!_next|favicon.ico|logo.svg|manifest.webmanifest).*)"] };
+export const config = { matcher: ["/((?!_next|api/health|favicon.ico|logo.svg|manifest.webmanifest).*)"] };
