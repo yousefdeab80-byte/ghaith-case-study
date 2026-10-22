@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-bg text-ink font-sans antialiased; }
+  input, select, textarea { @apply font-sans; }
+  ::selection { @apply bg-accent-tint; }
+}
+
+@layer components {
+  .card { @apply bg-surface rounded-card border border-line shadow-card p-5; }
+  .section-title { @apply text-[15px] font-bold text-primary flex items-center gap-2 mb-1; }
+  .section-sub { @apply text-xs text-ink-soft mb-4; }
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3.5 py-2 text-sm font-semibold text-ink hover:bg-surface-alt disabled:opacity-50 transition; }
+  .btn-primary { @apply bg-primary text-white border-primary hover:bg-primary-dark; }
+  .btn-danger { @apply text-danger border-danger/40 hover:bg-danger-tint; }
+  .btn-sm { @apply px-2.5 py-1 text-xs; }
+  .input { @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary-tint; }
+  .label { @apply block text-xs font-semibold text-ink-soft mb-1; }
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap; }
+  .badge-high { @apply bg-danger-tint text-danger; }
+  .badge-mid { @apply bg-accent-tint text-accent; }
+  .badge-low { @apply bg-good-tint text-good; }
+  .badge-study { @apply bg-water-tint text-water; }
+  .badge-eligible { @apply bg-accent-tint text-[#8a5a1c]; }
+  .badge-served { @apply bg-good-tint text-good; }
+  .badge-excluded { @apply bg-surface-alt text-ink-soft; }
+  .table { @apply w-full text-sm; }
+  .table th { @apply text-right text-xs font-bold text-ink-soft bg-surface-alt px-3 py-2 whitespace-nowrap; }
+  .table td { @apply px-3 py-2 border-t border-line align-middle; }
+  .table-wrap { @apply overflow-x-auto rounded-lg border border-line; }
+  .stat { @apply card p-4; }
+  .stat .label-sm { @apply text-xs text-ink-soft; }
+  .stat .value { @apply text-2xl font-extrabold text-primary mt-1; }
+}
