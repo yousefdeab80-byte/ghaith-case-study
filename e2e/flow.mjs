@@ -32,14 +32,13 @@ console.log("benefits:", (await p.locator(".card.border-good").innerText()).repl
 
 // wizard create
 await p.goto("http://localhost:3000/cases/new?form=general", { waitUntil: "networkidle" });
-await p.click("text=التالي");
-await p.locator("label:has-text('اسم الحالة') + input").fill("حالة تجريبية من الويزارد");
-await p.locator("label:has-text('الرقم القومي') + input").first().fill("29001012101999");
+await p.locator("label:has-text('اسم الزوج') + input").first().fill("حالة تجريبية من الويزارد");
+await p.locator("label:has-text('الرقم القومي') + input").first().fill("28501012101993");
 await p.locator("label:has-text('الرقم القومي') + input").first().blur();
 await p.waitForTimeout(800);
 await p.screenshot({ path: S + "/shots/wizard.png", fullPage: true });
 await p.click("text=حفظ والإكمال لاحقاً");
-await p.waitForURL(/\/cases\/[0-9a-f-]{36}$/, { timeout: 20000 });
+await p.waitForURL(/\/cases\/[0-9a-f-]{36}$/, { timeout: 20000 }).catch(async (e) => { console.log("url:", p.url(), await p.locator(".text-danger").allInnerTexts()); throw e; });
 console.log("created:", p.url());
 await p.screenshot({ path: S + "/shots/created.png", fullPage: true });
 

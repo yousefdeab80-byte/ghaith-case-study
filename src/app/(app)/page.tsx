@@ -31,7 +31,8 @@ export default async function Dashboard() {
 
   return (
     <>
-      <PageHeader title="لوحة التحكم" sub="نظرة عامة على حالات القطاع والمساعدات المنفذة" />
+      <PageHeader title="لوحة التحكم" sub="نظرة عامة على حالات القطاع والمساعدات المنفذة"
+        actions={<><Link className="btn" href="/reports">تقرير قاعدة بيانات الحالات</Link><Link className="btn btn-primary" href="/reports/achievements">تقرير الإنجازات</Link></>} />
       <div className="grid gap-4 grid-cols-2 lg:grid-cols-4 mb-4">
         <Stat label="إجمالي المساعدات منذ 2023" value={HISTORICAL_STATS.totalAid + liveAid} foot={`منها ${n(liveAid)} مسجلة في السستم`} />
         <Stat label="الحالات المسجلة" value={totals.total} foot={`${n(totals.people)} فرد`} />

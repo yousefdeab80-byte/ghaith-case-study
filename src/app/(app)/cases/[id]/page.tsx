@@ -1,3 +1,4 @@
+import type { FamilyMember } from "@/db/schema";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, desc, eq, isNotNull, or } from "drizzle-orm";
@@ -139,18 +140,22 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
 
       <div className="grid gap-4 lg:grid-cols-2 mb-4">
         {sectionsFor(c.formType).map((s) => {
-          const fields = s.fields.filter((f) => isVisible(f, values));
+          const filled = (f: { key: string }) => { const v = values[f.key]; return !(v === undefined || v === null || v === "" || (Array.isArray(v) && !v.length)); };
+          // القسم الإضافي (مش في الورق) بيظهر فيه المتسجل بس
+          const fields = s.fields.filter((f) => isVisible(f, values) && (!s.optional || filled(f)));
+          if (!fields.length) return null;
           return (
             <div key={s.id} className="card">
               <div className="section-title mb-3">{s.title}</div>
               {fields.map((f) => {
                 const v = values[f.key];
                 if (f.type === "members") {
-                  const members = (v as { name?: string; relation?: string; age?: string; eduStage?: string; job?: string }[]) ?? [];
+                  const members = (v as FamilyMember[]) ?? [];
+                  const withJob = members.some((m) => m.job);
                   return members.length ? (
                     <div key={f.key} className="table-wrap mt-2"><table className="table">
-                      <thead><tr><th>الاسم</th><th>القرابة</th><th>السن</th><th>التعليم</th><th>العمل</th></tr></thead>
-                      <tbody>{members.map((m, i) => <tr key={i}><td>{m.name}</td><td>{m.relation}</td><td>{m.age}</td><td>{m.eduStage}</td><td>{m.job}</td></tr>)}</tbody>
+                      <thead><tr><th>الاسم</th><th>الصلة</th><th>السن</th><th>النوع</th><th>المرحلة التعليمية</th><th>توجد شنطة</th>{withJob && <th>العمل</th>}</tr></thead>
+                      <tbody>{members.map((m, i) => <tr key={i}><td>{m.name}</td><td>{m.relation}</td><td>{m.age}</td><td>{m.gender}</td><td>{m.eduStage}</td><td>{m.hasBag}</td>{withJob && <td>{m.job}</td>}</tr>)}</tbody>
                     </table></div>
                   ) : null;
                 }

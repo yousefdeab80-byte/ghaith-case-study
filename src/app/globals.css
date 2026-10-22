@@ -23,7 +23,7 @@
   .badge-mid { @apply bg-accent-tint text-accent; }
   .badge-low { @apply bg-good-tint text-good; }
   .badge-study { @apply bg-water-tint text-water; }
-  .badge-eligible { @apply bg-accent-tint text-[#8a5a1c]; }
+  .badge-eligible { @apply bg-brand-soft text-primary; }
   .badge-served { @apply bg-good-tint text-good; }
   .badge-excluded { @apply bg-surface-alt text-ink-soft; }
   .table { @apply w-full text-sm; }
@@ -33,4 +33,11 @@
   .stat { @apply card p-4; }
   .stat .label-sm { @apply text-xs text-ink-soft; }
   .stat .value { @apply text-2xl font-extrabold text-primary mt-1; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { @apply bg-white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .card { @apply shadow-none; }
+  .report h2 { break-after: avoid; }
 }

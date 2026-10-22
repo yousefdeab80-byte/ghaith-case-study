@@ -4,7 +4,8 @@ import { can, currentUser } from "@/lib/server/auth";
 import { caseFilters, type CaseSearch } from "@/lib/server/case-query";
 import { ALL_FIELDS } from "@/lib/forms";
 import { toValues } from "@/lib/case-record";
-import { buildXlsx, safeFileName, xlsxResponse } from "@/lib/server/xlsx";
+import { buildWorkbook, buildXlsx, safeFileName, xlsxResponse } from "@/lib/server/xlsx";
+import { achievementsReport, casesReport, type AchievementFilter, type CaseReportFilter, type GroupRow, type Row } from "@/lib/server/reports";
 import { getSheet, getSheetCases } from "@/lib/server/sheets";
 import { sheetRow } from "@/lib/nomination";
 import { PRIORITY_LABELS, STATUS_LABELS } from "@/lib/constants";
@@ -44,6 +45,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
       "مربوطة بملف حالة": b.caseId ? "نعم" : "لا",
     })), `المساعدات-${date}`);
   }
+  if (kind === "report-cases" || kind === "report-achievements") {
+    if (!can(user, "dashboard")) return new Response("forbidden", { status: 403 });
+    const sp = Object.fromEntries(new URL(req.url).searchParams);
+    const sheets = kind === "report-cases" ? casesReportSheets(await casesReport(sp as CaseReportFilter)) : achievementsSheets(await achievementsReport(sp as AchievementFilter));
+    const name = kind === "report-cases" ? "تقرير-قاعدة-بيانات-الحالات" : "تقرير-التنفيذات-والإنجازات";
+    return xlsxResponse(buildWorkbook(sheets), `${name}-${date}`);
+  }
   if (kind === "sheet") {
     if (!can(user, "nominate")) return new Response("forbidden", { status: 403 });
     const id = new URL(req.url).searchParams.get("id") ?? "";
@@ -60,4 +68,67 @@ export async function GET(req: Request, { params }: { params: Promise<{ kind: st
     return xlsxResponse(buildXlsx(e.snapshot, "كشف الترشيح"), safeFileName(`${e.subject} - ${e.sentAt.toISOString().slice(0, 10)}`));
   }
   return new Response("not found", { status: 404 });
+}
+
+const table = (head: string, rows: Row[], unit = "عدد الأسر") => rows.map(([k, v]) => ({ [head]: k, [unit]: v }));
+const groups = (head: string, rows: GroupRow[]) => rows.map((r) => ({ [head]: r.k, "المساعدات": r.n, "الأسر": r.f }));
+
+function casesReportSheets(r: Awaited<ReturnType<typeof casesReport>>) {
+  const t = r.totals;
+  return [
+    { name: "ملخص", rows: [
+      ["الأسر المسجلة", t.total], ["إجمالي الأفراد", t.people], ["الأطفال", t.children], ["متوسط حجم الأسرة", t.avgFamily],
+      ["أسر استفادت فعلاً", t.benefited], ["بياناتها مكتملة 100%", t.complete], ["متوسط اكتمال البيانات %", t.avgCompleteness],
+      ["معاها رقم قومي", t.withNid], ["معاها تليفون", t.withPhone], ["عدد المحافظات", t.governorates], ["عدد القرى", t.villages],
+      ["متوسط الدخل الشهري", t.avgIncome], ["اتسجلت الشهر ده", t.thisMonth],
+    ].map(([k, v]) => ({ "البند": k, "القيمة": v })) },
+    { name: "حالة الملف", rows: table("حالة الملف", r.status) },
+    { name: "الأولوية", rows: table("الأولوية", r.priority) },
+    { name: "اكتمال البيانات", rows: table("نسبة الاكتمال", r.completeness) },
+    { name: "المحافظات", rows: table("المحافظة", r.gov) },
+    { name: "المراكز", rows: table("المركز", r.markaz) },
+    { name: "القرى", rows: table("القرية", r.village) },
+    { name: "الحالة الاجتماعية", rows: table("الحالة الاجتماعية", r.marital) },
+    { name: "الحالة الصحية", rows: table("الحالة الصحية", r.health) },
+    { name: "حجم الأسرة", rows: table("عدد الأفراد", r.family) },
+    { name: "نوع السقف", rows: table("نوع السقف", r.roof) },
+    { name: "مصدر الدخل", rows: table("مصدر الدخل", r.income) },
+    { name: "الدخل الشهري", rows: table("الدخل الشهري", r.incomeBuckets) },
+    { name: "نصيب الفرد", rows: table("نصيب الفرد من الدخل", r.perCapita) },
+    { name: "التدخلات المقترحة", rows: table("التدخل", r.recommendations) },
+    { name: "الترشيحات", rows: r.nominations.map((x) => ({ "المشروع": x.project, "مستنية كشف": x.pool, "في كشف (مسودة)": x.draft, "اتبعتت": x.sent })) },
+    { name: "التسجيل الشهري", rows: table("الشهر", r.months) },
+    { name: "مصدر التسجيل", rows: table("المصدر", r.source) },
+    { name: "نوع الاستمارة", rows: table("الاستمارة", r.formType) },
+    { name: "الباحثين", rows: table("الباحث", r.explorers) },
+  ];
+}
+
+function achievementsSheets(r: Awaited<ReturnType<typeof achievementsReport>>) {
+  const t = r.totals;
+  const out: { name: string; rows: Record<string, unknown>[] }[] = [
+    { name: "ملخص", rows: [
+      ["مساعدات اتسلمت (مسجلة في السستم)", t.aid], ["عدد السجلات", t.records], ["أسر استفادت", t.families], ["أفراد وصلهم الأثر", t.people],
+      ["أسر استفادت من أكتر من مشروع", t.repeat], ["مشروعات", t.projects], ["محافظات", t.governorates], ["قرى", t.villages], ["قوافل / دفعات", t.convoys],
+      ["أول تاريخ", t.first ?? ""], ["آخر تاريخ", t.last ?? ""],
+      ...(r.cumulative ? [["إجمالي المساعدات منذ 2023 (تراكمي)", r.cumulative.aid], ["إجمالي المستفيدين منذ 2023 (تراكمي)", r.cumulative.beneficiaries]] : []),
+    ].map(([k, v]) => ({ "البند": k, "القيمة": v })) },
+  ];
+  if (r.cumulative) out.push(
+    { name: "تراكمي - السنين", rows: table("السنة", r.cumulative.years, "المساعدات") },
+    { name: "تراكمي - المستفيدين", rows: table("السنة", r.cumulative.beneficiariesByYear, "المستفيدين") },
+    { name: "تراكمي - المشروعات", rows: table("المشروع", r.cumulative.projects, "المساعدات") },
+    { name: "تراكمي - المحافظات", rows: table("المحافظة", r.cumulative.governorates, "المساعدات") },
+  );
+  return [
+    ...out,
+    { name: "حسب السنة", rows: groups("السنة", r.byYear) },
+    { name: "حسب الشهر", rows: groups("الشهر", r.byMonth) },
+    { name: "حسب المشروع", rows: groups("المشروع", r.byProject) },
+    { name: "حسب القطاع", rows: groups("القطاع", r.bySector) },
+    { name: "حسب المحافظة", rows: groups("المحافظة", r.byGov) },
+    { name: "حسب القرية", rows: groups("القرية", r.byVillage) },
+    { name: "القوافل", rows: r.convoys.map((x) => ({ "المشروع": x.project, "القافلة": x.convoy, "المحافظات": x.govs, "من": x.from, "إلى": x.to, "المساعدات": x.n, "الأسر": x.f })) },
+    { name: "كشوف الترشيح", rows: r.sheets.map((x) => ({ "المشروع": x.project, "عدد الكشوف": x.sheets, "عدد الحالات": x.cases })) },
+  ];
 }

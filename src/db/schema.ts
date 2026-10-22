@@ -47,6 +47,8 @@ export const projects = pgTable("projects", {
 export type FamilyMember = {
   name?: string; relation?: string; gender?: string; age?: string; nid?: string;
   eduStage?: string; job?: string; income?: string; health?: string;
+  /** عنده شنطة مدرسة؟ (نعم/لا) */
+  hasBag?: string;
 };
 
 /** ملف الحالة (الأسرة). الحقول اللي بنفلتر عليها أعمدة، والباقي في details. */

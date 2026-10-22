@@ -8,10 +8,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-5 bg-gradient-to-b from-primary-dark to-primary">
       <form action={action} className="bg-surface rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-        <div className="flex flex-col items-center text-center mb-6">
-          <img src="/logo.svg" alt="" className="w-11 h-11 mb-2" />
-          <h1 className="text-xl font-extrabold text-primary">غيث</h1>
-          <p className="text-xs text-ink-soft mt-1">نظام إدارة قطاع دراسة الحالة</p>
+        <div className="flex flex-col items-center text-center mb-6 -mx-8 -mt-8 px-8 pt-8 pb-5 rounded-t-2xl bg-primary-dark">
+          <img src="/logo.png" alt="مؤسسة غيث للتنمية المجتمعية" className="w-40" />
+          <h1 className="text-sm font-bold text-brand mt-3">نظام إدارة قطاع دراسة الحالة</h1>
         </div>
         {error && <div className="bg-danger-tint text-danger text-sm rounded-lg px-3 py-2 mb-3">{error}</div>}
         <label className="label" htmlFor="username">اسم المستخدم</label>
