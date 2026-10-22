@@ -34,6 +34,12 @@ export async function GET() {
   await par.end({ timeout: 2 }).catch(() => {});
   // نفس الكلاينت ونفس الاستعلامات اللي السستم بيستخدمها
   await step("appUsers", () => db.select({ id: schema.users.id }).from(schema.users).limit(1).then((r) => r.length));
+  // كل استعلام لوحده بالترتيب، عشان لو واحد بس اللي بيعلّق نعرفه
+  for (const [name, q] of [
+    ["cases", () => db.select({ n: count() }).from(schema.cases)],
+    ["benefits", () => db.select({ n: count() }).from(schema.benefits)],
+    ["auditLog", () => db.select({ n: count() }).from(schema.auditLog)],
+  ] as const) await step(`app_${name}`, () => q().then((r) => r[0]?.n));
   await step("appParallel", () => Promise.all([
     db.select({ n: count() }).from(schema.cases),
     db.select({ n: count() }).from(schema.benefits),
